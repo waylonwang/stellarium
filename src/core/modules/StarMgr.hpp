@@ -361,6 +361,10 @@ public:
 	const QList<QMap<StelObjectP, float>>& getHipparcosHighPMStars() const { return hipStarsHighPM; }
 	const QList<QMap<StelObjectP, float>>& getHipparcosDoubleStars() const { return doubleHipStars; }
 	const QList<QMap<StelObjectP, float>>& getHipparcosVariableStars() const { return variableHipStars; }
+	//! Get relations between magnitude stars and draw radius
+	//! @param core the instance of stellarium's core
+	//! @return a list of pairs magnitude-radius
+	QList< QPair<float, float> > getListMagnitudeRadius(StelCore *core);
 
 private slots:
 	//! Translate text.
