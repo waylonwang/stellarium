@@ -29,6 +29,7 @@
 #include "Orbit.hpp"
 #include "planetsephems/precession.h"
 #include "planetsephems/EphemWrapper.hpp"
+#include "planetsephems/moonphys.h"
 #include "StelObserver.hpp"
 #include "StelProjector.hpp"
 #include "sidereal_time.h"
@@ -565,6 +566,7 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 			.arg(QString::number(rotLocalToParent[13], 'f', 7))
 			.arg(QString::number(rotLocalToParent[14], 'f', 7))
 			.arg(QString::number(rotLocalToParent[15], 'f', 7)) << "<br>";
+		oss << QString("DEBUG: Planet using %1 axis computation<br>").arg(re.useICRF?"new":"old");
 	}
 //#endif
 
@@ -813,10 +815,60 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 				{
 					// we must repeat the position lookup from above in case we have topocentric corrections.
 					StelUtils::rectToSphe(&ra_equ,&dec_equ, getEquinoxEquatorialPos(core));
+					StelUtils::equToEcl(ra_equ, dec_equ, eclJDE, &lambdaMoon, &betaMoon);
 					StelUtils::rectToSphe(&raSun,&deSun, ssystem->getSun()->getEquinoxEquatorialPos(core));
+					//StelUtils::equToEcl(raSun, deSun, eclJDE, &lambdaSun, &betaSun);
 				}
 				const double chi=atan2(cos(deSun)*sin(raSun-ra_equ), sin(deSun)*cos(dec_equ)-cos(deSun)*sin(dec_equ)*cos(raSun-ra_equ));
 				oss << QString("%1: %2").arg(q_("Position angle of bright limb"), StelUtils::radToDecDegStr(StelUtils::fmodpos(chi, M_PI*2.0))) << "<br/>";
+
+				// Everything around libration:
+				const double jde=core->getJDE();
+				const double T=(jde-2451545.0)/36525.0;
+				double Lp, D, M, Mp, E, F, Omega, lBogus, bBogus, rBogus;
+				computeMoonAngles(core->getJDE(), &Lp, &D, &M, &Mp, &E, &F, &Omega, &lBogus, &bBogus, &rBogus, true);
+				oss << QString("DEBUG: L'=%1, D=%2, M=%3, M'=%4, E=%5, F=%6, &Omega;=%7, &lambda;=%8, &beta;=%9, &Delta;=%10<br/>")
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(Lp, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(D, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(M, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(Mp, M_PI*2.0)))
+				       .arg(QString::number(E))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(F, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(Omega, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(lambdaMoon, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(betaMoon))
+				       .arg(QString::number(rBogus));
+				double dPsi, dEps;
+				getNutationAngles(jde, &dPsi, &dEps);
+				double W, lp, bp, lpp, bpp, PA;
+				computeLibrations(T, M, Mp, D, E, F, Omega, lambdaMoon, dPsi, betaMoon, ra_equ, eclJDE, &W, &lp, &bp, &lpp, &bpp, &PA);
+				oss << QString("DEBUG: &Delta;&psi;=%1, &Delta;&epsilon;=%2, W=%3, l'=%4, b'=%5, l''=%6, b''=%7, P=%8<br/>")
+				       .arg(StelUtils::radToDecDegStr(dPsi))
+				       .arg(StelUtils::radToDecDegStr(dEps))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(W, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(fmod(lp, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(bp))
+				       .arg(StelUtils::radToDecDegStr(fmod(lpp, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(bpp))
+				       .arg(StelUtils::radToDecDegStr(StelUtils::fmodpos(PA, M_PI*2.0)));
+
+				// Repeat for selenographic position of the sun:
+				double wBogus, lop, bop, lopp, bopp, paBogus, lambdaH, betaH;
+				const Vec3d hcMoon=getHeliocentricEclipticPos();
+				StelUtils::rectToSphe(&lambdaH, &betaH, hcMoon);
+				computeLibrations(T, M, Mp, D, E, F, Omega, lambdaH, dPsi, betaH, raSun, eclJDE, &wBogus, &lop, &bop, &lopp, &bopp, &paBogus);
+				oss << QString("DEBUG: l<sub>0</sub>'=%1, b<sub>0</sub>'=%2, l<sub>0</sub>''=%3, b<sub>0</sub>''=%4<br/>")
+				       .arg(StelUtils::radToDecDegStr(fmod(lop, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(bop))
+				       .arg(StelUtils::radToDecDegStr(fmod(lopp, M_PI*2.0)))
+				       .arg(StelUtils::radToDecDegStr(bopp));
+
+				double l =fmod(lp+lpp, M_PI*2.0);   if (l>M_PI_2)  l -=2.0*M_PI;
+				double lo=fmod(lop+lopp, M_PI*2.0); if (lo>M_PI_2) lo-=2.0*M_PI;
+				oss << QString("%1: %2/%3").arg(q_("Libration"), StelUtils::radToDecDegStr(l), StelUtils::radToDecDegStr(bp+bpp)) << "<br/>";
+				oss << QString("%1: %2").arg(q_("PA of axis"), StelUtils::radToDmsStr(PA)) << "<br/>";
+				oss << QString("%1: %2/%3").arg(q_("Subsolar point"), StelUtils::radToDecDegStr(lo), StelUtils::radToDecDegStr(bop+bopp)) << "<br/>";
+				oss << QString("%1: %2").arg(q_("Colongitude"), StelUtils::radToDecDegStr(StelUtils::fmodpos(450.0*M_PI_180-lop-lopp, M_PI*2.0))) << "<br/>";
 			}
 		}
 
@@ -891,6 +943,37 @@ QVariantMap Planet::getInfoMap(const StelCore *core) const
 		}
 	}
 	map.insert("type", getPlanetTypeString()); // replace existing "type=Planet" by something more detailed.
+
+	if (getEnglishName()=="Moon")
+	{
+		// Everything around libration:
+		const double jde=core->getJDE();
+		const double T=(jde-2451545.0)/36525.0;
+		static SolarSystem *ssystem=GETSTELMODULE(SolarSystem);
+		const double eclJDE = ssystem->getEarth()->getRotObliquity(jde);
+		double raMoon, decMoon, lambdaMoon, betaMoon;
+		StelUtils::rectToSphe(&raMoon,&decMoon, getEquinoxEquatorialPos(core));
+		StelUtils::equToEcl(raMoon, decMoon, eclJDE, &lambdaMoon, &betaMoon);
+		double Lp, D, M, Mp, E, F, Omega, lBogus, bBogus, rBogus;
+		computeMoonAngles(core->getJDE(), &Lp, &D, &M, &Mp, &E, &F, &Omega, &lBogus, &bBogus, &rBogus, false);
+		double dPsi, dEps;
+		getNutationAngles(jde, &dPsi, &dEps);
+		double W, lp, bp, lpp, bpp, PA;
+		computeLibrations(T, M, Mp, D, E, F, Omega, lambdaMoon, dPsi, betaMoon, raMoon, eclJDE, &W, &lp, &bp, &lpp, &bpp, &PA);
+		// Repeat for selenographic position of the sun:
+		double Wbogus, lop, bop, lopp, bopp, PAbogus, lambdaH, betaH;
+		const Vec3d hcMoon=getHeliocentricEclipticPos();
+		StelUtils::rectToSphe(&lambdaH, &betaH, hcMoon);
+		computeLibrations(T, M, Mp, D, E, F, Omega, lambdaH, dPsi, betaH, raMoon, eclJDE, &Wbogus, &lop, &bop, &lopp, &bopp, &PAbogus);
+		double l =fmod(lp+lpp, M_PI*2.0);   if (l>M_PI_2)  l -=2.0*M_PI;
+		double lo=fmod(lop+lopp, M_PI*2.0); if (lo>M_PI_2) lo-=2.0*M_PI;
+		map.insert("libration_l", l*M_180_PI);
+		map.insert("libration_b", (bp+bpp)*M_180_PI);
+		map.insert("pa_axis", PA*M_180_PI);
+		map.insert("subsolar_point_l", lo*M_180_PI);
+		map.insert("subsolar_point_b", (bop+bopp)*M_180_PI);
+		map.insert("colongitude", StelUtils::fmodpos(450.0*M_PI_180-lop-lopp, M_PI*2.0)*M_180_PI);
+	}
 
 	return map;
 }
@@ -1137,12 +1220,11 @@ void Planet::computeTransMatrix(double JD, double JDE)
 		bool retransform=false; // this must be set true on each of these special cases now:
 		double J2000NPoleRA=re.ra0;
 		double J2000NPoleDE=re.de0;
-		if(re.ra1 || re.de1)
+		if((re.ra1!=0.0) || (re.de1!=0.0))
 		{
+			retransform=true;
 			J2000NPoleRA+=re.ra1*T; // these values in radians
 			J2000NPoleDE+=re.de1*T;
-			retransform=true;
-		}
 
 		// Apply detailed corrections from ExplSup2016 and WGCCRE2009. The nesting increases lookup speed.
 		if (englishName=="Moon")
@@ -1175,8 +1257,8 @@ void Planet::computeTransMatrix(double JD, double JDE)
 		}
 		else if (englishName=="Neptune")
 		{
-			J2000NPoleRA+= (0.7 *M_PI/180.)*sin(planetCorrections.Na); // these values in radians
-			J2000NPoleDE-= (0.51*M_PI/180.)*cos(planetCorrections.Na);
+			J2000NPoleRA+= (0.7 *M_PI_180)*sin(planetCorrections.Na); // these values in radians
+			J2000NPoleDE-= (0.51*M_PI_180)*cos(planetCorrections.Na);
 			retransform=true;
 		}
 		else if (englishName=="Phobos")
@@ -1402,7 +1484,7 @@ void Planet::computeTransMatrix(double JD, double JDE)
 				retransform=true;
 			}
 		}
-
+		}
 		if (retransform)
 		{
 			re.currentAxisRA=J2000NPoleRA;
@@ -1427,12 +1509,19 @@ void Planet::computeTransMatrix(double JD, double JDE)
 			// qDebug() << "\tCalculated rotational obliquity: " << rotObliquity*180./M_PI << endl;
 			// qDebug() << "\tCalculated rotational ascending node: " << rotAscNode*180./M_PI << endl;
 			re.obliquity=re_obliquity; // WE NEED THIS AGAIN IN getRotObliquity()
-			//re.ascendingNode=re_ascendingNode;
+			re.ascendingNode=re_ascendingNode;
+			addToExtraInfoString(DebugAid, QString("DEBUG: Retransform: Pole in VSOP87 coords: &alpha;=%1, &delta;=%2").arg(StelUtils::radToHmsStr(ra)).arg(StelUtils::radToDmsStr(de)));
+			addToExtraInfoString(DebugAid, QString("DEBUG: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
+		}
+		else {
+			addToExtraInfoString(DebugAid, QString("DEBUG: No retransform. re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
+
 		}
 		if (re.useICRF)
 		{
 			// The new model directly gives a matrix into ICRF, which is practically identical and called VSOP87 for us.
 			setRotEquatorialToVsop87(Mat4d::zrotation(re_ascendingNode) * Mat4d::xrotation(re_obliquity));
+			addToExtraInfoString(DebugAid, QString("DEBUG: useICRF: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
 		}
 		else
 		{
@@ -1442,6 +1531,7 @@ void Planet::computeTransMatrix(double JD, double JDE)
 		//rotLocalToParent = Mat4d::zrotation(re.ascendingNode - re.precessionRate*(JDE-re.epoch)) * Mat4d::xrotation(re.obliquity);
 		rotLocalToParent = Mat4d::zrotation(re_ascendingNode) * Mat4d::xrotation(re_obliquity);
 		//qDebug() << "Planet" << englishName << ": computeTransMatrix() setting old-style rotLocalToParent.";
+		addToExtraInfoString(DebugAid, QString("DEBUG: OLDSTYLE: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
 		}
 	}
 }
@@ -1506,11 +1596,11 @@ double Planet::getSiderealTime(double JD, double JDE) const
 		}
 		else if (englishName=="Mercury")
 		{
-			const double M1=(174.791086*M_PI/180.0) + remainder(( 4.092335*M_PI/180.0)*t, 2.0*M_PI);
-			const double M2=(349.582171*M_PI/180.0) + remainder(( 8.184670*M_PI/180.0)*t, 2.0*M_PI);
-			const double M3=(164.373257*M_PI/180.0) + remainder((12.277005*M_PI/180.0)*t, 2.0*M_PI);
-			const double M4=(339.164343*M_PI/180.0) + remainder((16.369340*M_PI/180.0)*t, 2.0*M_PI);
-			const double M5=(153.955429*M_PI/180.0) + remainder((20.461675*M_PI/180.0)*t, 2.0*M_PI);
+			const double M1=(174.791086*M_PI_180) + remainder(( 4.092335*M_PI_180)*t, 2.0*M_PI);
+			const double M2=(349.582171*M_PI_180) + remainder(( 8.184670*M_PI_180)*t, 2.0*M_PI);
+			const double M3=(164.373257*M_PI_180) + remainder((12.277005*M_PI_180)*t, 2.0*M_PI);
+			const double M4=(339.164343*M_PI_180) + remainder((16.369340*M_PI_180)*t, 2.0*M_PI);
+			const double M5=(153.955429*M_PI_180) + remainder((20.461675*M_PI_180)*t, 2.0*M_PI);
 
 			w += (-0.00000535)*sin(M5) - (0.00002364)*sin(M4) - (0.00010280)*sin(M3) - (0.00104581)*sin(M2) + (0.00993822)*sin(M1);
 		}
@@ -1523,13 +1613,13 @@ double Planet::getSiderealTime(double JD, double JDE) const
 		}
 		if (englishName=="Phobos")
 		{
-			const double M1=(169.51*M_PI/180.0) - (0.4357640*M_PI/180.0)*t;
-			const double M2=(192.93*M_PI/180.0) + (1128.4096700*M_PI/180.0)*t +(8.864*M_PI/180.0)*T*T;
+			const double M1=(169.51*M_PI_180) - (0.4357640*M_PI_180)*t;
+			const double M2=(192.93*M_PI_180) + (1128.4096700*M_PI_180)*t +(8.864*M_PI_180)*T*T;
 			w+=  (8.864)*T*T - (1.42)*sin(M1) - (0.78)*sin(M2);
 		}
 		if (englishName=="Deimos")
 		{
-			const double M3=(53.47*M_PI/180.0) - (0.0181510*M_PI/180.0)*t;
+			const double M3=(53.47*M_PI_180) - (0.0181510*M_PI_180)*t;
 			w+=  (-0.520)*T*T - (2.58)*sin(M3) + (0.19)*sin(M3);
 		}
 		else if (parent->englishName=="Jupiter")
