@@ -67,7 +67,7 @@ namespace TelescopeControlGlobals {
 	};
 
 	//! List of the telescope servers that don't need external executables
-	const QStringList EMBEDDED_TELESCOPE_SERVERS = QString("TelescopeServerDummy TelescopeServerLx200 TelescopeServerNexStar").split(' ', QString::SkipEmptyParts);
+	const QStringList EMBEDDED_TELESCOPE_SERVERS = QString("TelescopeServerDummy TelescopeServerLx200 TelescopeServerNexStar TelescopeServerNexStar5").split(' ', QString::SkipEmptyParts);
 };
 
 #endif // TELESCOPECONTROLGLOBALS_HPP

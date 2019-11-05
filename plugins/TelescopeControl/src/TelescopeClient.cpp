@@ -27,6 +27,7 @@
 #include "Rts2/TelescopeClientJsonRts2.hpp"
 #include "Lx200/TelescopeClientDirectLx200.hpp"
 #include "NexStar/TelescopeClientDirectNexStar.hpp"
+#include "NexStar5/TelescopeClientDirectNexStar5.hpp"
 #include "INDI/TelescopeClientINDI.hpp"
 #include "StelUtils.hpp"
 #include "StelTranslator.hpp"
@@ -107,6 +108,10 @@ TelescopeClient *TelescopeClient::create(const QString &url)
 	else if (type == "TelescopeServerNexStar")
 	{
 		newTelescope= new TelescopeClientDirectNexStar(name, params, eq);
+	}
+	else if (type == "TelescopeServerNexStar5")
+	{
+		newTelescope= new TelescopeClientDirectNexStar5(name, params, eq);
 	}
 	else if (type == "INDI")
 	{

@@ -1729,6 +1729,8 @@ void TelescopeControl::translations()
 			N_("Wildcard Innovations' Argo Navis DTC in Meade LX200 emulation mode.")
 			// TRANSLATORS: Description for Celestron NexStar (compatible) mounts
 			N_("Any telescope or telescope mount compatible with Celestron NexStar.")
+			// TRANSLATORS: Description for Celestron NexStar 5/8 (compatible) mounts
+			N_("Any telescope or telescope mount compatible with Celestron NexStar 5/8.")
 			// TRANSLATORS: Description for Sky-Watcher SynScan (version 3 or later) mounts
 			N_("Any Sky-Watcher mount that uses version 3 or later of the SynScan hand controller.")
 			// TRANSLATORS: Description for Sky-Watcher SynScan AZ GOTO mounts

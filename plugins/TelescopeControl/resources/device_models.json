@@ -1,5 +1,5 @@
 {
-    "version": "0.3.1",
+    "version": "0.3.2",
 	"list" :
 	[
 		{
@@ -36,6 +36,12 @@
 			"name" : "Celestron NexStar (compatible)",
 			"description" : "Any telescope or telescope mount compatible with Celestron NexStar.",
 			"server" : "TelescopeServerNexStar",
+			"default_delay" : 500000
+		},
+		{
+			"name" : "Celestron NexStar 5/8 (compatible)",
+			"description" : "Any telescope or telescope mount compatible with Celestron NexStar 5/8.",
+			"server" : "TelescopeServerNexStar5",
 			"default_delay" : 500000
 		},
 		{

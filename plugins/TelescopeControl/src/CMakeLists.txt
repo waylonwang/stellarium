@@ -4,6 +4,7 @@ add_subdirectory(common)
 add_subdirectory(gui)
 add_subdirectory(Lx200)
 add_subdirectory(NexStar)
+add_subdirectory(NexStar5)
 add_subdirectory(Rts2)
 add_subdirectory(INDI)
 
@@ -26,6 +27,7 @@ TARGET_LINK_LIBRARIES(TelescopeControl-static
     TelescopeControl_Lx200
     TelescopeControl_INDI
     TelescopeControl_NexStar
+    TelescopeControl_NexStar5
     TelescopeControl_Rts2
     TelescopeControl_common
     Qt5::Core
