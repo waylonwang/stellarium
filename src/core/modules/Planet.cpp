@@ -491,8 +491,8 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 		oss << QString("%1 XYZ (%2): %3/%4/%5").arg(qc_("Ecliptical","coordinates")).arg(algoName).arg(QString::number(eclPos[0], 'f', 7), QString::number(eclPos[1], 'f', 7), QString::number(eclPos[2], 'f', 7)) << "<br>";
 
 		oss << q_("DEBUG: Sidereal Time of Prime Meridian (angle W): %1°").arg(QString::number(getSiderealTime(core->getJD(), core->getJDE()), 'f', 3)) << "<br>";
-		oss << q_("DEBUG: Axis (RA/Dec): %1/%2").arg(StelUtils::radToDmsStr(getCurrentAxisRA(), true), StelUtils::radToDmsStr(getCurrentAxisDE(), true)) << "<br>";
-		oss << q_("DEBUG: RotObliquity: %1").arg(StelUtils::radToDmsStr(re.obliquity, true)) << "<br>";
+		oss << q_("DEBUG: Axis (RA/Dec): %1°/%2°").arg(QString::number(getCurrentAxisRA()*M_180_PI, 'f', 6), QString::number(getCurrentAxisDE()*M_180_PI, 'f', 6)) << "<br>";
+		oss << q_("DEBUG: RotObliquity: %1°").arg(QString::number(re.obliquity*M_180_PI, 'f', 6)) << "<br>";
 
 		oss << QString("DEBUG:  E1: %1  E2: %2  E3: %3  E4: %4  E5: %5\n").arg(StelUtils::radToDecDegStr(Planet::planetCorrections.E1))
 		       .arg(StelUtils::radToDecDegStr(Planet::planetCorrections.E2))
@@ -822,7 +822,7 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 				const double chi=atan2(cos(deSun)*sin(raSun-ra_equ), sin(deSun)*cos(dec_equ)-cos(deSun)*sin(dec_equ)*cos(raSun-ra_equ));
 				oss << QString("%1: %2").arg(q_("Position angle of bright limb"), StelUtils::radToDecDegStr(StelUtils::fmodpos(chi, M_PI*2.0))) << "<br/>";
 
-				// Everything around libration:
+/*				// Everything around libration:
 				const double jde=core->getJDE();
 				const double T=(jde-2451545.0)/36525.0;
 				double Lp, D, M, Mp, E, F, Omega, lBogus, bBogus, rBogus;
@@ -869,6 +869,7 @@ QString Planet::getInfoString(const StelCore* core, const InfoStringGroup& flags
 				oss << QString("%1: %2").arg(q_("PA of axis"), StelUtils::radToDmsStr(PA)) << "<br/>";
 				oss << QString("%1: %2/%3").arg(q_("Subsolar point"), StelUtils::radToDecDegStr(lo), StelUtils::radToDecDegStr(bop+bopp)) << "<br/>";
 				oss << QString("%1: %2").arg(q_("Colongitude"), StelUtils::radToDecDegStr(StelUtils::fmodpos(450.0*M_PI_180-lop-lopp, M_PI*2.0))) << "<br/>";
+*/
 			}
 		}
 
@@ -1485,6 +1486,8 @@ void Planet::computeTransMatrix(double JD, double JDE)
 			}
 		}
 		}
+		addToExtraInfoString(DebugAid, QString("J2000PoleRA: %1 DE %2<br/>").arg(StelUtils::radToDecDegStr(J2000NPoleRA)).arg(StelUtils::radToDecDegStr(J2000NPoleDE)));
+
 		if (retransform)
 		{
 			re.currentAxisRA=J2000NPoleRA;
@@ -1497,31 +1500,31 @@ void Planet::computeTransMatrix(double JD, double JDE)
 
 			double ra, de;
 			StelUtils::rectToSphe(&ra, &de, vsop87Pole);
-//			if (englishName=="Moon")
-//			{
-//				qDebug() << "Moon: J2000NPoleRA:" << J2000NPoleRA *180./M_PI << "J2000NPoleDE:" <<  J2000NPoleDE *180./M_PI;
-//				qDebug() << "    :           RA:" <<           ra *180./M_PI << "          DE:" <<            de *180./M_PI;
-//			}
+			if (englishName=="Moon")
+			{
+				addToExtraInfoString(DebugAid, QString("CTMx: Moon: J2000NPoleRA: %1 J2000NPoleDE: %2<br/>").arg(StelUtils::radToDecDegStr(J2000NPoleRA)).arg(StelUtils::radToDecDegStr(J2000NPoleDE)));
+				addToExtraInfoString(DebugAid, QString("CTMx:           RA: %1 DE %2<br/>").arg(StelUtils::radToDecDegStr(ra)).arg(StelUtils::radToDecDegStr(de)));
+			}
 
 			re_obliquity = (M_PI_2 - de);
 			re_ascendingNode = (ra + M_PI_2);
 
-			// qDebug() << "\tCalculated rotational obliquity: " << rotObliquity*180./M_PI << endl;
-			// qDebug() << "\tCalculated rotational ascending node: " << rotAscNode*180./M_PI << endl;
+			addToExtraInfoString(DebugAid, QString("CTMx: Calculated rotational obliquity: %1<br/>").arg(StelUtils::radToDecDegStr(re_obliquity)));
+			addToExtraInfoString(DebugAid, QString("CTMx: Calculated rotational ascending node: %1<br/>").arg(StelUtils::radToDecDegStr(re_ascendingNode)));
 			re.obliquity=re_obliquity; // WE NEED THIS AGAIN IN getRotObliquity()
 			re.ascendingNode=re_ascendingNode;
-			addToExtraInfoString(DebugAid, QString("DEBUG: Retransform: Pole in VSOP87 coords: &alpha;=%1, &delta;=%2").arg(StelUtils::radToHmsStr(ra)).arg(StelUtils::radToDmsStr(de)));
-			addToExtraInfoString(DebugAid, QString("DEBUG: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
+			addToExtraInfoString(DebugAid, QString("Retransform: Pole in VSOP87 coords: &alpha;=%1, &delta;=%2<br/>").arg(StelUtils::radToDecDegStr(ra)).arg(StelUtils::radToDecDegStr(de)));
+			addToExtraInfoString(DebugAid, QString("new re.obliquity=%1, re.ascendingNode=%2<br/>").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
 		}
 		else {
-			addToExtraInfoString(DebugAid, QString("DEBUG: No retransform. re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
-
+			addToExtraInfoString(DebugAid, QString("No retransform. re.obliquity=%1, re.ascendingNode=%2 <br/>").arg(StelUtils::radToDecDegStr(re.obliquity)).arg(StelUtils::radToDecDegStr(re.ascendingNode)));
 		}
+
 		if (re.useICRF)
 		{
 			// The new model directly gives a matrix into ICRF, which is practically identical and called VSOP87 for us.
 			setRotEquatorialToVsop87(Mat4d::zrotation(re_ascendingNode) * Mat4d::xrotation(re_obliquity));
-			addToExtraInfoString(DebugAid, QString("DEBUG: useICRF: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
+			addToExtraInfoString(DebugAid, QString("useICRF: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
 		}
 		else
 		{
@@ -1531,7 +1534,7 @@ void Planet::computeTransMatrix(double JD, double JDE)
 		//rotLocalToParent = Mat4d::zrotation(re.ascendingNode - re.precessionRate*(JDE-re.epoch)) * Mat4d::xrotation(re.obliquity);
 		rotLocalToParent = Mat4d::zrotation(re_ascendingNode) * Mat4d::xrotation(re_obliquity);
 		//qDebug() << "Planet" << englishName << ": computeTransMatrix() setting old-style rotLocalToParent.";
-		addToExtraInfoString(DebugAid, QString("DEBUG: OLDSTYLE: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
+		addToExtraInfoString(DebugAid, QString("OLDSTYLE: new re.obliquity=%1, re.ascendingNode=%2").arg(StelUtils::radToDecDegStr(re_obliquity)).arg(StelUtils::radToDecDegStr(re_ascendingNode)));
 		}
 	}
 }
