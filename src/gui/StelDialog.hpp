@@ -199,7 +199,7 @@ protected slots:
 
 protected:
 	//! A list of widgets where kinetic scrolling can be activated or deactivated
-	//! The list must be filled once, in the constructor or init() of fillDialog() etc. functions.
+	//! The list must be filled once, in the constructor or init() or fillDialog() etc. functions.
 	QList<QWidget *> kineticScrollingList;
 
 private slots:
