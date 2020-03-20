@@ -1460,7 +1460,7 @@ void StelMainView::doScreenshot(void)
 	float pixelRatio = QOpenGLContext::currentContext()->screen()->devicePixelRatio();
 	int imgWidth =stelScene->width();
 	int imgHeight=stelScene->height();
-	bool nightModeWasEnabled=nightModeEffect->isEnabled();
+	const bool nightModeWasEnabled=nightModeEffect->isEnabled();
 	nightModeEffect->setEnabled(false);
 	if (flagUseCustomScreenshotSize)
 	{
